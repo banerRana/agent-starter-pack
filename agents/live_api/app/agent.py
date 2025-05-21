@@ -22,8 +22,7 @@ from google.genai import types
 # Constants
 VERTEXAI = os.getenv("VERTEXAI", "true").lower() == "true"
 LOCATION = "us-central1"
-EMBEDDING_MODEL = "text-embedding-004"
-MODEL_ID = "gemini-2.0-flash-exp"
+MODEL_ID = "gemini-2.0-flash-live-preview-04-09"
 
 # Initialize Google Cloud clients
 credentials, project_id = google.auth.default()
@@ -56,7 +55,7 @@ tool_functions = {"get_weather": get_weather}
 
 live_connect_config = types.LiveConnectConfig(
     response_modalities=[types.Modality.AUDIO],
-    tools=[get_weather],
+    tools=list(tool_functions.values()),
     # Change to desired language code (e.g., "es-ES" for Spanish, "fr-FR" for French)
     speech_config=types.SpeechConfig(language_code="en-US"),
     system_instruction=types.Content(
