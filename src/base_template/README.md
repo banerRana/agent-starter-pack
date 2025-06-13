@@ -49,7 +49,7 @@ make install && make playground
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
 | `make playground`    | Launch local development environment with backend and frontend{%- if "adk" in cookiecutter.tags %} - leveraging `adk web` command. {%- endif %}|
 | `make backend`       | Deploy agent to Cloud Run |
-| `make local-backend`       | Deploy agent to Cloud Run |
+| `make local-backend` | Launch local development server |
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
 {%- if cookiecutter.agent_name == 'live_api' %}
 | `make ui`       | Launch Agent Playground front-end only |
@@ -110,7 +110,7 @@ Here’s the recommended workflow for local development:
     This launches the Streamlit application, which connects to the backend server (by default at `http://localhost:8000`).
 
 4.  **Interact and Iterate:**
-    *   Open the Streamlit UI in your browser (usually `http://localhost:3000` or `http://localhost:3001`).
+    *   Open the Streamlit UI in your browser (usually `http://localhost:8501` or `http://localhost:3001`).
     *   Click the play button in the UI to connect to the backend.
     *   Interact with the agent! Try prompts like: *"Using the tool you have, define Governance in the context MLOPs"*
     *   Modify the agent logic in `app/agent.py`. The backend server (FastAPI with `uvicorn --reload`) should automatically restart when you save changes. Refresh the frontend if needed to see behavioral changes.
@@ -153,13 +153,13 @@ This template follows a "bring your own agent" approach - you focus on your busi
 1. **Prototype:** Build your Generative AI Agent using the intro notebooks in `notebooks/` for guidance. Use Vertex AI Evaluation to assess performance.
 2. **Integrate:** Import your agent into the app by editing `app/agent.py`.
 3. **Test:** Explore your agent functionality using the Streamlit playground with `make playground`. The playground offers features like chat history, user feedback, and various input types, and automatically reloads your agent on code changes.
-4. **Deploy:** Set up and initiate the CI/CD pipelines, customizing tests as necessary. Refer to the [deployment section](#deployment) for comprehensive instructions. For streamlined infrastructure deployment, simply run `agent-starter-pack setup-cicd`. Check out the [`agent-starter-pack setup-cicd` CLI command](https://github.com/GoogleCloudPlatform/agent-starter-pack/blob/main/docs/cli/setup_cicd.md). Currently only supporting Github.
+4. **Deploy:** Set up and initiate the CI/CD pipelines, customizing tests as necessary. Refer to the [deployment section](#deployment) for comprehensive instructions. For streamlined infrastructure deployment, simply run `uvx agent-starter-pack setup-cicd`. Check out the [`agent-starter-pack setup-cicd` CLI command](https://googlecloudplatform.github.io/agent-starter-pack/cli/setup_cicd.html). Currently only supporting Github.
 5. **Monitor:** Track performance and gather insights using Cloud Logging, Tracing, and the Looker Studio dashboard to iterate on your application.
 {% endif %}
 
 ## Deployment
 
-> **Note:** For a streamlined one-command deployment of the entire CI/CD pipeline and infrastructure using Terraform, you can use the [`agent-starter-pack setup-cicd` CLI command](https://github.com/GoogleCloudPlatform/agent-starter-pack/blob/main/docs/cli/setup_cicd.md). Currently only supporting Github.
+> **Note:** For a streamlined one-command deployment of the entire CI/CD pipeline and infrastructure using Terraform, you can use the [`agent-starter-pack setup-cicd` CLI command](https://googlecloudplatform.github.io/agent-starter-pack/cli/setup_cicd.html). Currently only supporting Github.
 
 ### Dev Environment
 

@@ -60,6 +60,7 @@ class GeminiSession:
         self.run_id = "n/a"
         self.user_id = "n/a"
         self.tool_functions = tool_functions
+        self._tool_tasks: list[asyncio.Task] = []
 
     async def receive_from_client(self) -> None:
         """Listen for and process messages from the client.
@@ -70,6 +71,7 @@ class GeminiSession:
         while True:
             try:
                 data = await self.websocket.receive_json()
+
                 if isinstance(data, dict) and (
                     "realtimeInput" in data or "clientContent" in data
                 ):
@@ -98,13 +100,7 @@ class GeminiSession:
     async def _handle_tool_call(
         self, session: Any, tool_call: LiveServerToolCall
     ) -> None:
-        """Process tool calls from Gemini and send back responses.
-
-        Args:
-            session: The Gemini session
-            tool_call: Tool call request from Gemini
-        """
-        # Handle case where function_calls might be None
+        """Process tool calls from Gemini and send back responses."""
         if tool_call.function_calls is None:
             logging.debug("No function calls in tool_call")
             return
@@ -116,7 +112,14 @@ class GeminiSession:
                 logging.error(f"Function {fc.name} not found")
                 continue
             args = fc.args if fc.args is not None else {}
-            response = func(**args)
+
+            # Handle both async and sync functions appropriately
+            if asyncio.iscoroutinefunction(func):
+                # Function is already async
+                response = await func(**args)
+            else:
+                # Run sync function in a thread pool to avoid blocking
+                response = await asyncio.to_thread(func, **args)
 
             tool_response = types.LiveClientToolResponse(
                 function_responses=[
@@ -127,18 +130,18 @@ class GeminiSession:
             await session.send(input=tool_response)
 
     async def receive_from_gemini(self) -> None:
-        """Listen for and process messages from Gemini.
-
-        Continuously receives messages from Gemini, forwards them to the client,
-        and handles any tool calls. Handles connection errors gracefully.
-        """
+        """Listen for and process messages from Gemini without blocking."""
         while result := await self.session._ws.recv(decode=False):
             await self.websocket.send_bytes(result)
             raw_message = json.loads(result)
             if "toolCall" in raw_message:
                 message = types.LiveServerMessage.model_validate(raw_message)
                 tool_call = LiveServerToolCall.model_validate(message.tool_call)
-                await self._handle_tool_call(self.session, tool_call)
+                # Create a separate task to handle the tool call without blocking
+                task = asyncio.create_task(
+                    self._handle_tool_call(self.session, tool_call)
+                )
+                self._tool_tasks.append(task)
 
 
 def get_connect_and_run_callable(websocket: WebSocket) -> Callable:
