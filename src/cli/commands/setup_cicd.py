@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
 import logging
 import re
 import shutil
@@ -203,12 +202,19 @@ def prompt_for_repository_details(
         choice = click.prompt(
             "Select option", type=click.Choice(["1", "2"]), default="1"
         )
-
         if choice == "1":
             # New repository
             if not repository_name:
+                # Get project name from pyproject.toml
+                with open("pyproject.toml") as f:
+                    for line in f:
+                        if line.strip().startswith("name ="):
+                            default_name = line.split("=")[1].strip().strip("\"'")
+                            break
+                    else:
+                        default_name = f"genai-app-{int(time.time())}"
                 repository_name = click.prompt(
-                    "Enter new repository name", default=f"genai-app-{int(time.time())}"
+                    "Enter new repository name", default=default_name
                 )
             if not repository_owner:
                 repository_owner = click.prompt(
@@ -221,40 +227,18 @@ def prompt_for_repository_details(
                 repo_url = click.prompt(
                     "Enter existing repository URL (e.g., https://github.com/owner/repo)"
                 )
-                # Extract owner and name from URL
-                match = re.match(r"https://github\.com/([^/]+)/([^/]+)", repo_url)
+                # Extract owner and repo name from URL
+                match = re.search(r"github\.com/([^/]+)/([^/]+)", repo_url)
                 if match:
                     repository_owner = match.group(1)
-                    repository_name = match.group(2)
-
-                    # Verify repository exists and is empty
-                    try:
-                        result = run_command(
-                            [
-                                "gh",
-                                "repo",
-                                "view",
-                                f"{repository_owner}/{repository_name}",
-                                "--json",
-                                "isEmpty",
-                            ],
-                            capture_output=True,
-                        )
-                        if not json.loads(result.stdout).get("isEmpty", False):
-                            if not click.confirm(
-                                "Repository is not empty. Are you sure you want to use it?",
-                                default=False,
-                            ):
-                                continue
-                        break
-                    except subprocess.CalledProcessError:
-                        console.print(
-                            "❌ Repository not found or not accessible",
-                            style="bold red",
-                        )
-                        continue
+                    # Remove .git suffix if present
+                    repository_name = match.group(2).rstrip(".git")
+                    break
                 else:
-                    console.print("❌ Invalid repository URL format", style="bold red")
+                    console.print(
+                        "❌ Invalid repository URL format. Please use https://github.com/owner/repo",
+                        style="bold red",
+                    )
 
     if repository_name is None or repository_owner is None:
         raise ValueError("Repository name and owner must be provided")
@@ -499,10 +483,6 @@ def setup_cicd(
             console.print("\n🛑 Setup cancelled by user", style="bold yellow")
             return
 
-    # Check if GitHub CLI is installed
-    if git_provider == "github" or git_provider is None:
-        if not check_gh_cli_installed():
-            prompt_gh_cli_installation()
     console.print(
         "This command helps set up a basic CI/CD pipeline for development and testing purposes."
     )
@@ -535,6 +515,10 @@ def setup_cicd(
 
     # Check GitHub authentication if GitHub is selected
     if git_provider == "github" and not (github_pat and github_app_installation_id):
+        # Check if GitHub CLI is installed
+        if git_provider == "github" or git_provider is None:
+            if not check_gh_cli_installed():
+                prompt_gh_cli_installation()
         if not is_github_authenticated():
             console.print("\n⚠️ Not authenticated with GitHub CLI", style="yellow")
             handle_github_authentication()
@@ -563,15 +547,12 @@ def setup_cicd(
 
     if git_provider == "github" and detected_mode == "interactive":
         # First create the repository since we're in interactive mode
-        create_github_repository(repository_owner, repository_name)
+        if not repository_exists:
+            create_github_repository(repository_owner, repository_name)
 
         # Then create the connection
         oauth_token_secret_id, github_app_installation_id = create_github_connection(
-            project_id=cicd_project,
-            region=region,
-            connection_name=host_connection_name,
-            repository_name=repository_name,
-            repository_owner=repository_owner,
+            project_id=cicd_project, region=region, connection_name=host_connection_name
         )
         repository_exists = True
     elif git_provider == "github" and detected_mode == "programmatic":

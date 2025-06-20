@@ -134,7 +134,7 @@ def create(
         console.print("\n=== GCP Agent Starter Pack :rocket:===", style="bold blue")
         console.print("Welcome to the Agent Starter Pack!")
         console.print(
-            "This tool will help you create an end-to-end production-ready AI agent in GCP!\n"
+            "This tool will help you create an end-to-end production-ready AI agent in Google Cloud!\n"
         )
         # Validate project name
         if len(project_name) > 26:
@@ -191,6 +191,13 @@ def create(
         if debug:
             logging.debug(f"Selected agent: {agent}")
 
+        template_path = (
+            pathlib.Path(__file__).parent.parent.parent.parent
+            / "agents"
+            / final_agent
+            / "template"
+        )
+        config = load_template_config(template_path)
         # Data ingestion and datastore selection
         if include_data_ingestion or datastore:
             # If datastore is specified but include_data_ingestion is not, set it to True
@@ -206,13 +213,6 @@ def create(
                 logging.debug(f"Selected datastore type: {datastore}")
         else:
             # Check if the agent requires data ingestion
-            template_path = (
-                pathlib.Path(__file__).parent.parent.parent.parent
-                / "agents"
-                / final_agent
-                / "template"
-            )
-            config = load_template_config(template_path)
             if config and config.get("settings", {}).get("requires_data_ingestion"):
                 include_data_ingestion = True
                 datastore = prompt_datastore_selection(final_agent)
@@ -317,14 +317,21 @@ def create(
 
         console.print("\n> Success! Your agent project is ready.")
         console.print(
-            "\n📖 For more information on project structure, usage, and deployment, check out the README:"
+            f"\n📖 Project README: [cyan]cat {cd_path}/README.md[/]"
+            "\n   Online Development Guide: [cyan][link=https://goo.gle/asp-dev]https://goo.gle/asp-dev[/link][/cyan]"
         )
-        console.print(f"   [cyan]cat {cd_path}/README.md[/]")
         # Determine the correct path to display based on whether output_dir was specified
         console.print("\n🚀 To get started, run the following command:")
-        console.print(
-            f"   [bold bright_green]cd {cd_path} && make install && make playground[/]"
-        )
+
+        # Check if the agent has a 'dev' command in its settings
+        if config["settings"].get("commands", {}).get("extra", {}).get("dev"):
+            console.print(
+                f"   [bold bright_green]cd {cd_path} && make install && make dev[/]"
+            )
+        else:
+            console.print(
+                f"   [bold bright_green]cd {cd_path} && make install && make playground[/]"
+            )
     except Exception:
         if debug:
             logging.exception(
@@ -335,11 +342,10 @@ def create(
 
 def prompt_region_confirmation(default_region: str = "us-central1") -> str:
     """Prompt user to confirm or change the default region."""
-    console.print(f"\n> Default GCP region is '{default_region}'")
     new_region = Prompt.ask(
-        "Enter desired GCP region (leave blank for default). Gemini uses global endpoint by default.",
-        default="",
-        show_default=False,
+        "\nEnter desired GCP region (Gemini uses global endpoint by default)",
+        default=default_region,
+        show_default=True,
     )
 
     return new_region if new_region else default_region
@@ -468,11 +474,19 @@ def _handle_credential_verification(creds_info: dict) -> dict:
     # Check if running in Cloud Shell
     if os.environ.get("CLOUD_SHELL") == "true":
         if creds_info["project"] == "":
-            console.print("> It looks like you are running in Cloud Shell.")
             console.print(
-                "> You need to set up a project ID to continue, but you haven't setup a project yet."
+                "> It looks like you are running in Cloud Shell.", style="bold blue"
             )
-            new_project = Prompt.ask("\n> Enter a project ID")
+            console.print(
+                "> You need to set up a project ID to continue, but you haven't setup a project yet.",
+                style="bold blue",
+            )
+            new_project = Prompt.ask("\n> Enter a project ID", default=None)
+            while not new_project:
+                console.print(
+                    "> Project ID cannot be empty. Please try again.", style="bold red"
+                )
+                new_project = Prompt.ask("\n> Enter a project ID", default=None)
             creds_info["project"] = new_project
             set_gcp_project(creds_info["project"], set_quota_project=False)
         return creds_info

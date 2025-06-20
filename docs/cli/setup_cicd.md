@@ -4,20 +4,22 @@ The `setup-cicd` command is a powerful utility provided by `agent-starter-pack` 
 
 **⚡️ Quick Start Example:**
 
-The command is now even simpler to get started with. You can run it without any arguments, and it will prompt you for the required project IDs:
+Getting started is straightforward. We recommend using `uvx` to execute the command, as `uv` (a prerequisite, see below) will handle fetching and running the `agent-starter-pack` for you, even if it's not installed globally:
 
 ```bash
-agent-starter-pack setup-cicd
+uvx agent-starter-pack setup-cicd
 ```
 *(You will be prompted for Staging and Production project IDs)*
 
 Alternatively, you can provide the project IDs directly as flags:
 
 ```bash
-agent-starter-pack setup-cicd \
+uvx agent-starter-pack setup-cicd \
   --staging-project=your-staging-project-id \
   --prod-project=your-prod-project-id
 ```
+
+**💡 Tip:** Using `uvx` (e.g., `uvx agent-starter-pack ...`) ensures you are able to run the command without needing to install the `agent-starter-pack` package globally or in your current environment. `uv` itself must be installed.
 
 **⚠️ Important Considerations:**
 
@@ -25,17 +27,18 @@ agent-starter-pack setup-cicd \
 *   **Production Use:** For production environments, we **strongly recommend** following the detailed instructions in `deployment/README.md`. Manual setup offers greater control over security and configuration. This automated command is best suited for development and testing.
 *   **GitHub Only:** Currently, only GitHub is supported as a Git provider.
 
-### Prerequisites
+## Prerequisites
 
 1.  **Run from Project Root:** Execute the command from the root directory of your `agent-starter-pack` project (where `pyproject.toml` is located).
 2.  **Install Tools:**
+    *   `uv`: The command will be run using `uvx`. Ensure `uv` is installed. (See [uv installation guide](https://github.com/astral-sh/uv#installation))
     *   Terraform
     *   `gh` CLI (GitHub CLI): Install and authenticate using `gh auth login`.
     *   `gcloud` CLI (Google Cloud SDK): Authenticate using `gcloud auth application-default login`.
 3.  **Google Cloud Projects:** You need at least two Google Cloud projects: one for staging and one for production. The command will prompt you for their IDs if you don't provide the `--staging-project` and `--prod-project` flags. You also need a project to host the CI/CD resources (Cloud Build, Artifact Registry, Terraform state). You can specify this using `--cicd-project`. If omitted, the production project will be used for CI/CD resources.
 4.  **Permissions:** The user or service account running this command must have the `Owner` role on the specified Google Cloud projects (staging, production, CI/CD if specified, development if specified). This is necessary for creating resources and assigning IAM roles.
 
-### How it Works
+## How it Works
 
 The `setup-cicd` command automates the following:
 
@@ -48,10 +51,10 @@ The `setup-cicd` command automates the following:
 5.  **Resource Deployment:** Runs `terraform apply` to create the necessary resources in Google Cloud and configure the GitHub repository connection.
 6.  **Local Git Setup:** Initializes a Git repository locally (if needed) and adds the GitHub repository as the `origin` remote.
 
-### Running the Command
+## Running the Command
 
 ```bash
-agent-starter-pack setup-cicd \
+uvx agent-starter-pack setup-cicd \
     [--staging-project <YOUR_STAGING_PROJECT_ID>] \
     [--prod-project <YOUR_PROD_PROJECT_ID>] \
     [--cicd-project <YOUR_CICD_PROJECT_ID>] \
@@ -76,9 +79,9 @@ agent-starter-pack setup-cicd \
 *   `--auto-approve`: (Optional) Skip interactive prompts (including project ID prompts if flags are omitted). Use carefully.
 *   `--debug`: (Optional) Enable verbose logging.
 
-*(For advanced/programmatic use with pre-existing connections, see options like `--github-pat`, `--github-app-installation-id`, `--host-connection-name` by running `agent-starter-pack setup-cicd --help`)*
+*(For advanced/programmatic use with pre-existing connections, see options like `--github-pat`, `--github-app-installation-id`, `--host-connection-name` by running `uvx agent-starter-pack setup-cicd --help`)*
 
-### After Running the Command
+## After Running the Command
 
 1.  **Commit and Push:** This is crucial to trigger the pipeline.
     ```bash
@@ -88,6 +91,6 @@ agent-starter-pack setup-cicd \
     ```
 2.  **Verify:** Check your GitHub repository and Google Cloud projects (Cloud Build > Triggers, Secret Manager, IAM) to see the created resources.
 
-### Manual CI/CD Setup (Recommended for Production)
+## Manual CI/CD Setup (Recommended for Production)
 
-For robust, production-ready deployments with fine-grained control over security, customization, and advanced CI/CD practices, please follow the [manual setup guide](../deployment.md).
+For robust, production-ready deployments with fine-grained control over security, customization, and advanced CI/CD practices, please follow the [manual setup guide](../guide/deployment.md).
